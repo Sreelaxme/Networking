@@ -24,9 +24,8 @@ class UAP:
 
     @classmethod
     def decode(cls, data):
-        print(data)
-        if len(data) < 25:
-            raise ValueError("Input data must have 25 bytes to unpack.")
+        if len(data) < 24:
+            raise ValueError("Input data must have 24 bytes to unpack.")
         
         header_bytes = data[:25]
         message_bytes = data[25:]
@@ -54,11 +53,11 @@ class Message:
 
     @classmethod
     def decode(cls, data):
-        if len(data) < 25:
-            raise ValueError("Input data must have 25 bytes to unpack.")
+        if len(data) < 12:
+            raise ValueError("Input data must have 12 bytes to unpack.")
         
-        header_bytes = data[:25]
-        message_bytes = data[25:]
+        header_bytes = data[:12]
+        message_bytes = data[12:]
         
         magic, version, command, sequence, session = struct.unpack('>HBBII', header_bytes)
         
