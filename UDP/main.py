@@ -3,16 +3,18 @@ from Network import Client
 from ThreadedNetwork import ThreadedClient
 from ThreadedUAP import UAPClient
 
-host = "192.168.43.230"
-port = 12300
+host = "localhost"
+port = 12301
 seq = 0
 sID = 0
 
 if __name__ == "__main__":
     
     # Initialize the client
-    client = Client(host, port)
-    helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "")
+    client = UAPClient(Client(host, port))
+    
+    client.Run()
+    helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
     Client.SendPacket(helloMessage)
     
 
