@@ -6,8 +6,8 @@ import socket
 import threading
 
 
-host = "192.168.43.148"
-port = 1234
+host = "localhost"
+port = 12345
 sID = random.getrandbits(32)
 seq = 0
 
@@ -108,12 +108,7 @@ if __name__ == "__main__":
     finally:
         isRunning = False
         client.Exit()
-    # client.Run()
-    # while(1):
-    #     m = Message(0, 0, 0, "hellppppp")
-    #     m_enc = m.encode()
-    #     print(m_enc)
-    #     client.SendPacket(m_enc)
+    
 
     # Close the client
     client.Exit()
