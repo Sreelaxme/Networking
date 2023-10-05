@@ -191,51 +191,51 @@ async def input_handler(concurrent_task : asyncio.Task,server):
         concurrent_task.cancel()
         # cancel the sessions tasks
         send_goodbye_to_active_sessions(server.sessions.copy(), server.server_socket)
-# async def main(port, host='0.0.0.0'):
-#     # server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#     server_address = (host, port)
-#     # server_socket.bind(server_address)
-
-#     # Create asynchronous socket
-#     server_socket = await asyncudp.create_socket(local_addr=server_address)
-    
-#     print(f"Waiting on host {host} and port {port}")
-    
-#     data, client_address = await server_socket.recvfrom()
-#     # Define each task
-#     recieve_task = asyncio.ensure_future(handle_packet(data,client_address))
-#     input_task = asyncio.ensure_future(input_handler(recieve_task))
-
-#     # Await on all parallel tasks
-#     _, pending = await asyncio.wait([input_task, recieve_task], return_when=asyncio.FIRST_COMPLETED)
-
-#     # Cancel whichever tasks have not ended yet
-#     for task in pending:
-#         task.cancel()
-
-#     # Send GOODBYE message to all active sessions
-#     send_goodbye_to_active_sessions(AsyncServer.sessions.copy())
-#     # Close the socket and clean up
-#     server_socket.close()
-#     return
-
 async def main(port, host='0.0.0.0'):
+    # server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_address = (host, port)
+    # server_socket.bind(server_address)
     server = AsyncServer(host,port)
-    # Create a task for the server
-    server_task = asyncio.ensure_future(server.run())
+    # Create asynchronous socket
+    server_socket = await asyncudp.create_socket(local_addr=server_address)
+    print(server_socket)
+    print(f"Waiting on host {host} and port {port}")
+    
+    data, client_address = await server_socket.recvfrom()
+    # Define each task
+    recieve_task = asyncio.ensure_future(server.handle_packet(data,client_address))
+    input_task = asyncio.ensure_future(input_handler(recieve_task))
 
-    # Create a task for input handling
-    input_task = asyncio.ensure_future(input_handler(server_task,server))
+    # Await on all parallel tasks
+    _, pending = await asyncio.wait([input_task, recieve_task], return_when=asyncio.FIRST_COMPLETED)
 
-    # Wait for either task to complete
-    _, pending = await asyncio.wait([input_task, server_task], return_when=asyncio.FIRST_COMPLETED)
-
-    # Cancel any remaining tasks
+    # Cancel whichever tasks have not ended yet
     for task in pending:
         task.cancel()
 
-    # Wait for all tasks to finish
-    await asyncio.gather(*pending)
+    # Send GOODBYE message to all active sessions
+    send_goodbye_to_active_sessions(AsyncServer.sessions.copy())
+    # Close the socket and clean up
+    server_socket.close()
+    return
+
+# async def main(port, host='0.0.0.0'):
+#     server = AsyncServer(host,port)
+#     # Create a task for the server
+#     server_task = asyncio.ensure_future(server.run())
+
+#     # Create a task for input handling
+#     input_task = asyncio.ensure_future(input_handler(server_task,server))
+
+#     # Wait for either task to complete
+#     _, pending = await asyncio.wait([input_task, server_task], return_when=asyncio.FIRST_COMPLETED)
+
+#     # Cancel any remaining tasks
+#     for task in pending:
+#         task.cancel()
+
+#     # Wait for all tasks to finish
+#     await asyncio.gather(*pending)
 
 if __name__ == "__main__":
     port = 12345
