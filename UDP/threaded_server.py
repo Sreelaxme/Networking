@@ -101,8 +101,8 @@ if __name__ == "__main__":
         quit()
     except Exception as e:
         print(e)
-    finally:
-        # Send GOODBYE message to all active sessions
-        finish_all_clients()
-        server_socket.close()
-        quit()
+    # finally:
+    # Send GOODBYE message to all active sessions
+    finish_all_clients()
+    print(server_socket)
+    server_socket.close()
