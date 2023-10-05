@@ -79,13 +79,13 @@ if __name__ == "__main__":
         while currState in [STATES["Ready"],STATES["Ready Timer"]]:
             try:
                 m  = input()
+                message = m.encode('utf-8',errors="ignore")
+                m = message.decode('utf-8')  
                 if(m == None or len(m)==0):
                     continue
                 if(m == "eof"):   
                     currState = STATES["Closing"]
-                    break
-                message = m.encode('utf-8',errors="ignore")
-                m = message.decode('utf-8')   
+                    break 
             except EOFError:
                 currState = STATES["Closing"]
                 break
