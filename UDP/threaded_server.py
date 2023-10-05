@@ -103,6 +103,6 @@ if __name__ == "__main__":
         print(e)
     finally:
         # Send GOODBYE message to all active sessions
-        finish_all_clients(clients, server_socket)
+        finish_all_clients()
         server_socket.close()
         quit()
