@@ -26,8 +26,8 @@ def send_goodbye(session_id):
     
 def thread_handler(session_id):
     # When thread is created, first we will have to send a hello message back
-    message = UAP.Message(UAP.UAP.CommandEnum.Hello,0,session_id,"HELLO")
-    clients['sequence_id'] = 1
+    message = UAP.Message(UAP.UAP.CommandEnum.HELLO,0,session_id,"HELLO")
+    clients[session_id]['sequence_no'] = 1
     server_socket.sendto(message.encode(), clients[session_id]['client_address'])
     print(f"{session_id} [0] Session created")
     while True:
@@ -39,13 +39,13 @@ def thread_handler(session_id):
             msg = clients[session_id]['message_queue'].get(block=False)
         except:
             continue
-        if(msg.sequence_id+1 == clients[session_id]['sequence_id']):
-            print(f"{session_id} [{clients[session_id]['sequence_id']-1}] Duplicate packet!")
-        elif(msg.sequence_id > clients[session_id]['sequence_id']):
-            while(clients[session_id]['sequence_id'] != msg.sequence_id-1):
-                print(f"{session_id} [{clients[session_id]['sequence_id']}] Lost packet!")
-                clients[session_id]['sequence_id'] = clients[session_id]['sequence_id']+1
-        elif(msg.sequence_id < clients[session_id]['sequence_id']):
+        if((msg.sequence_no)+1 == clients[session_id]['sequence_no']):
+            print(f"{session_id} [{clients[session_id]['sequence_no']-1}] Duplicate packet!")
+        elif(msg.sequence_no > clients[session_id]['sequence_no']):
+            while(clients[session_id]['sequence_no'] != msg.sequence_no):
+                print(f"{session_id} [{clients[session_id]['sequence_no']}] Lost packet!")
+                clients[session_id]['sequence_no'] = clients[session_id]['sequence_no']+1
+        elif(msg.sequence_no < clients[session_id]['sequence_no']):
             send_goodbye(session_id)
             break
         
@@ -53,10 +53,11 @@ def thread_handler(session_id):
             send_goodbye(session_id)
             print(f"{session_id} Session Closed")
             break
-        elif msg.command == UAP.UAP.CommandEnum.Data :
-            print(f"{session_id} [{msg.sequence_id}] {msg.message}")
+        elif msg.command == UAP.UAP.CommandEnum.DATA :
+            print(f"{session_id} [{msg.sequence_no}] {msg.message}")
             message = UAP.Message(UAP.UAP.CommandEnum.ALIVE,0,session_id,"ALIVE")
             server_socket.sendto(message.encode(), clients[session_id]['client_address'])
+            clients[session_id]['sequence_no'] = clients[session_id]['sequence_no']+1
             
 def ReceivePacket():
     try:
@@ -65,12 +66,12 @@ def ReceivePacket():
             if not data:
                 continue
             msg = UAP.Message.decode(data)
-            if(msg.magic!=5027 or msg.version!=1):
+            if(msg.magic!=50273 or msg.version!=1):
                 continue
             if(msg.session_id not in clients.keys()):
                 if(msg.command == UAP.UAP.CommandEnum.HELLO and msg.sequence_no == 0):
                     clients[msg.session_id] = {'thread':None,'message_queue':queue.Queue(),'client_address':client_address}
-                    clients[msg.session_id]['thread'] = threading.Thread(target=thread_handler,args=(msg.session_id))
+                    clients[msg.session_id]['thread'] = threading.Thread(target=thread_handler,args=(msg.session_id,))
                     clients[msg.session_id]['thread'].start()
                     clients[msg.session_id]['timer'] = time.time()
             elif(msg.command in [UAP.UAP.CommandEnum.DATA, UAP.UAP.CommandEnum.GOODBYE]):
