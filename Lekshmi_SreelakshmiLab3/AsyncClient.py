@@ -5,6 +5,7 @@ import time
 import socket
 import asyncio
 import asyncudp
+import aioconsole
 import sys
 
 host = "localhost"
@@ -26,14 +27,15 @@ STATES = {
 currState = STATES["Hello wait"]
 def sendPacket(client : Client,message : Message):
     global seq
-    client.SendPacket(message.encode())
+    client.sendto(message.encode())
+    # client.SendPacket(message.encode())
     seq +=1
 
-async def ReceivePacket(client):
+async def ReceivePacket(client_socket):
     global isRunning, timerStart , currState
     while isRunning:
         try:
-            data, _ = client.client_socket.recvfrom(1024)
+            data, _ = await client_socket.recvfrom()
             msg = Message.decode(data)
             if msg.command == UAP.CommandEnum.HELLO:
                 print("Received Hello from server")
@@ -49,12 +51,13 @@ async def ReceivePacket(client):
             pass
 
 async def InputHandler(client):
+    global timerStart, currState, isRunning
     timerStart = time.time()
     while currState in [STATES["Ready"],STATES["Ready Timer"]]:
         if not isRunning:
             break
         try:
-            m  = input()
+            m  = await aioconsole.ainput("")
             message = m.encode('utf-8',errors="ignore")
             m = message.decode('utf-8')  
             if(m == None or len(m)==0):
@@ -85,16 +88,18 @@ async def InputHandler(client):
     
 
 async def main(server_host, server_port):
-    client = Client(server_host, server_port)   
+    client_socket = await asyncudp.create_socket(remote_addr=('127.0.0.1', 12345))
+    # client = Client(server_host, server_port)   
     helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
-    sendPacket(client,helloMessage)
-    client.client_socket.settimeout(timeout)
-    global isRunning
+    client_socket.sendto(helloMessage.encode())
+    # client.client_socket.settimeout(timeout)
+    global isRunning, currState
     # Wait for hello
     try:   
         while True:
             try:
-                data, _ = client.client_socket.recvfrom(1024)
+                data, _ = await client_socket.recvfrom()
+                # print("data")
                 if not data:
                     continue
                 msg = Message.decode(data)
@@ -105,8 +110,8 @@ async def main(server_host, server_port):
                 currState = STATES["Closing"]
 
         isRunning = True
-        receive_task = asyncio.ensure_future(ReceivePacket(client))
-        input_task = asyncio.ensure_future(InputHandler(client))
+        receive_task = asyncio.ensure_future(ReceivePacket(client_socket))
+        input_task = asyncio.ensure_future(InputHandler(client_socket))
         _, pending = await asyncio.wait([receive_task,input_task], return_when = asyncio.FIRST_COMPLETED)
         for i in pending:
             i.cancel()
@@ -114,7 +119,7 @@ async def main(server_host, server_port):
         print(e)
     finally:
         isRunning = False
-        client.Exit()
+        client_socket.close()
 
 
 
