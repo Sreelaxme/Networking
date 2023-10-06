@@ -50,7 +50,7 @@ class Message:
 
     def encode(self):
         header = struct.pack('>HBBII', self.magic, self.version, self.command, self.sequence_no, self.session_id)
-        print("doneno?")
+        # print("doneno?")
         return header + self.message.encode()
 
     @classmethod
