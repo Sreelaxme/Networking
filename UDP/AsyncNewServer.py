@@ -36,37 +36,8 @@ class AsyncServer:
         self.server_socket.sendto(encoded_message, addr)
 
    
-    # async def handle_packet(self, data, client_address):
-    #     try:
-    #         received_message = Message.decode(data)
-    #         session_id = received_message.session_id
-
-    #         if received_message.command == UAP.CommandEnum.HELLO:
-    #             if session_id not in self.sessions:
-    #                 new_session = Session(session_id, client_address, self.server_socket, self.sessions)
-    #                 if not new_session.is_hello(received_message):
-    #                     return
-    #                 self.sessions[session_id] = new_session
-    #             else:
-    #                 self.sessions[session_id].close_session()
-    #                 return
-
-    #             self.sessions[session_id].update_activity_time()
-    #             await self.send_hello(self.sessions[session_id])
-    #             print("Replies sent")
-
-    #         elif received_message.command == UAP.CommandEnum.DATA:
-    #             if session_id in self.sessions:
-    #                 await self.sessions[session_id].messages.put(received_message)
-    #         elif received_message.command == UAP.CommandEnum.GOODBYE:
-    #             session_id = received_message.session_id
-    #             if session_id in self.sessions:
-    #                 await self.send_goodbye(self.sessions[session_id])
-    #                 self.terminate_session(session_id)
-    #     except KeyboardInterrupt:
-    #         print("handle_packet got keyboard interrupt")
-    #     except asyncio.exceptions.CancelledError:
-    #         pass
+   
+  
 
     async def handle_packet(self,data, client_address):
         
@@ -91,7 +62,7 @@ class AsyncServer:
             # reply_message = Message(UAP.CommandEnum.HELLO, 0, session_id, "Reply HELLO")
             # encoded_reply_message = reply_message.encode()
             # self.server_socket.sendto(encoded_reply_message, client_address)
-            await self.send_hello(new_session, client_address)
+            await self.send_hello(new_session)
             print("Replies sent")
 
         
@@ -126,6 +97,15 @@ class AsyncServer:
                 # Remove the session from active_sessions
                 del self.sessions[session_id]
 
+    async def handle_keyboard_input(self):
+        while True:
+            user_input = await asyncio.to_thread(input)  # Run input() in a separate thread
+            if user_input.lower() == 'q':
+                # Terminate the server gracefully
+                print("Terminating the server...")
+                send_goodbye_to_active_sessions(self.sessions.copy(), self.server_socket)
+                self.server_socket.close()
+                break
 
     def terminate_session(self, session_id):
         if session_id in self.sessions:
@@ -141,6 +121,7 @@ class AsyncServer:
         print(f"Waiting on host {host} and port {port}")
 
         try:
+            keyboard_task = asyncio.create_task(self.handle_keyboard_input())
             while True:
                 data, client_address = await self.server_socket.recvfrom()  # Receive data and client address
                 if not data:
@@ -153,8 +134,22 @@ class AsyncServer:
         except ValueError as e:
             print(f"Invalid message received from {client_address}: {e}")
         finally:
-            send_goodbye_to_active_sessions(self.sessions.copy(), self.server_socket)  # Pass the server_socket
-            self.server_socket.close()
+            # send_goodbye_to_active_sessions(self.sessions.copy(), self.server_socket)  # Pass the server_socket
+            # self.server_socket.close()
+            # Send goodbye messages to clients
+            for session_id, session in self.sessions.items():
+                goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session_id, "Server shutting down")
+                encoded_goodbye_message = goodbye_message.encode()
+                try:
+                    self.server_socket.sendto(encoded_goodbye_message, session.client_address)
+                except AttributeError:
+                    # Handle the case where server_socket is None (e.g., during server termination)
+                    pass
+            
+            if self.server_socket is not None:
+                self.server_socket.close()  # Close the server socket
+
+            await keyboard_task
 
 if __name__ == "__main__":
     port = 12345
