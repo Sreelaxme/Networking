@@ -8,7 +8,7 @@ import asyncudp
 import sys
 
 host = "localhost"
-port = 2048
+port = 2043
 sID = random.getrandbits(32)
 seq = 0
 
@@ -29,7 +29,7 @@ def sendPacket(client : Client,message : Message):
     client.SendPacket(message.encode())
     seq +=1
 
-def ReceivePacket(client):
+async def ReceivePacket(client):
     global isRunning, timerStart , currState
     while isRunning:
         try:
@@ -48,78 +48,78 @@ def ReceivePacket(client):
         except socket.timeout:
             pass
 
+async def InputHandler(client):
+    timerStart = time.time()
+    while currState in [STATES["Ready"],STATES["Ready Timer"]]:
+        if not isRunning:
+            break
+        try:
+            m  = input()
+            message = m.encode('utf-8',errors="ignore")
+            m = message.decode('utf-8')  
+            if(m == None or len(m)==0):
+                continue
+            if(m == "eof"):   
+                currState = STATES["Closing"]
+                break 
+        except EOFError:
+            currState = STATES["Closing"]
+            break
+        except KeyboardInterrupt : 
+            currState = STATES["Closing"]
+            break
+
+        if time.time() - timerStart > timeout and currState is STATES["Ready Timer"]:
+            currState = STATES["Closing"]
+            break
+        message = Message(UAP.CommandEnum.DATA,seq,sID,m)
+        sendPacket(client,message)
+        currState = STATES["Ready Timer"]
+    if currState == STATES["Closing"]:
+            sendPacket(client, Message(UAP.CommandEnum.GOODBYE, seq, sID, "POi"))
+    while isRunning:
+        if time.time() - timerStart >timeout:
+            isRunning = False
+
+
+    
+
 async def main(server_host, server_port):
-    client_socket = await asyncudp.create_socket(local_addr=(host,port))
-    # print(client_socket.getsockname())
-    # print(client_socket._transport.get_extra_info('remote_addr'))
+    client = Client(server_host, server_port)   
     helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
-    client_socket.sendto(helloMessage.encode(),(server_host,int(server_port)))
-    hello_time = time.time()
-    try:
+    sendPacket(client,helloMessage)
+    client.client_socket.settimeout(timeout)
+    global isRunning
+    # Wait for hello
+    try:   
         while True:
-            if(time.time()-hello_time < timeout):
-                data, _ = await client_socket.recvfrom()
-                print(data)
+            try:
+                data, _ = client.client_socket.recvfrom(1024)
                 if not data:
                     continue
                 msg = Message.decode(data)
                 if msg.session_id == sID and msg.command == UAP.CommandEnum.HELLO:
                     currState = STATES["Ready"]
                     break
-            else:
+            except TimeoutError:
                 currState = STATES["Closing"]
-        print(f"We are at {currState} people")
+
         isRunning = True
-        recieverThread = threading.Thread(target=ReceivePacket, args=(client,))
-        recieverThread.daemon = True
-        recieverThread.start()
-        timerStart = time.time()
-        while currState in [STATES["Ready"],STATES["Ready Timer"]]:
-            if not isRunning:
-                break
-            try:
-                m  = input()
-                message = m.encode('utf-8',errors="ignore")
-                m = message.decode('utf-8')  
-                if(m == None or len(m)==0):
-                    continue
-                if(m == "eof"):   
-                    currState = STATES["Closing"]
-                    break 
-            except EOFError:
-                currState = STATES["Closing"]
-                break
-            except KeyboardInterrupt : 
-                currState = STATES["Closing"]
-                break
-
-            if time.time() - timerStart > timeout and currState is STATES["Ready Timer"]:
-                currState = STATES["Closing"]
-                break
-            
-            
-            message = Message(UAP.CommandEnum.DATA,seq,sID,m)
-            sendPacket(client,message)
-            currState = STATES["Ready Timer"]
-
-        if currState == STATES["Closing"]:
-            sendPacket(client, Message(UAP.CommandEnum.GOODBYE, seq, sID, "POi"))
-        while isRunning:
-            if time.time() - timerStart >timeout:
-                isRunning = False
-
+        receive_task = asyncio.ensure_future(ReceivePacket(client))
+        input_task = asyncio.ensure_future(InputHandler(client))
+        _, pending = await asyncio.wait([receive_task,input_task], return_when = asyncio.FIRST_COMPLETED)
+        for i in pending:
+            i.cancel()
     except Exception as e:
         print(e)
     finally:
         isRunning = False
         client.Exit()
-    
 
-    # Close the client
-    client.Exit()
+
 
 if __name__ == "__main__":    
     if(len(sys.argv) == 3):
-        asyncio.run(main(sys.argv[1],sys.argv[2]))
+        asyncio.run(main(sys.argv[1],int(sys.argv[2])))
     else:
         print("Usage: python your_script.py <host> <port>")
