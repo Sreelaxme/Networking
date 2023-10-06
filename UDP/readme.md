@@ -5,3 +5,8 @@
 
 - implemented timer , states
 - its working ig
+
+- TODO:
+    - Input taken from user , test it
+    - Implement AsyncSever
+    - Recheck the timeout thing in ThreadedClient
