@@ -41,66 +41,119 @@ class AsyncServer:
         encoded_message = message.encode()
         self.server_socket.sendto(encoded_message, addr)
 
-    async def handle_packet(self,data, client_address):
+    # async def handle_packet(self,data, client_address):
         
-        msg = Message.decode(data)
-        if msg.command == UAP.CommandEnum.HELLO:
-            session_id = msg.session_id
+    #     msg = Message.decode(data)
+    #     if msg.command == UAP.CommandEnum.HELLO:
+    #         session_id = msg.session_id
             
-            if session_id not in self.sessions:
-                new_session = Session(session_id, client_address, self.server_socket, self.sessions)  # Pass server_socket and active_sessions
+    #         if session_id not in self.sessions:
+    #             new_session = Session(session_id, client_address, self.server_socket, self.sessions)  # Pass server_socket and active_sessions
                 
-                self.sessions[session_id] = new_session
-            else:
-                # remove from the dictionary 
-                print(self.sessions)
-                del self.sessions[session_id]
-                return
+    #             self.sessions[session_id] = new_session
+    #         else:
+    #             # remove from the dictionary 
+    #             print(self.sessions)
+    #             del self.sessions[session_id]
+    #             return
 
-            # Update the session's last activity time
-            self.sessions[session_id].update_activity_time()
+    #         # Update the session's last activity time
+    #         self.sessions[session_id].update_activity_time()
 
-            # Send a reply HELLO message back to the client
-            # reply_message = Message(UAP.CommandEnum.HELLO, 0, session_id, "Reply HELLO")
-            # encoded_reply_message = reply_message.encode()
-            # self.server_socket.sendto(encoded_reply_message, client_address)
-            await self.send_hello(new_session, client_address)
-            print("Replies sent")
+    #         # Send a reply HELLO message back to the client
+    #         # reply_message = Message(UAP.CommandEnum.HELLO, 0, session_id, "Reply HELLO")
+    #         # encoded_reply_message = reply_message.encode()
+    #         # self.server_socket.sendto(encoded_reply_message, client_address)
+    #         await self.send_hello(new_session, client_address)
+    #         print("Replies sent")
 
         
-        elif msg.command == UAP.CommandEnum.DATA:
-            session_id = msg.session_id
-            if session_id not in self.sessions:
-                # Terminate the session if the DATA message is received without a HELLO
-                return
+    #     elif msg.command == UAP.CommandEnum.DATA:
+    #         session_id = msg.session_id
+    #         if session_id not in self.sessions:
+    #             # Terminate the session if the DATA message is received without a HELLO
+    #             return
 
-            # Update the session's last activity time
-            self.sessions[session_id].update_activity_time()
+    #         # Update the session's last activity time
+    #         self.sessions[session_id].update_activity_time()
 
-            # Print the DATA message's data payload to stdout
-            print(f"Received DATA from session {session_id}: {msg.message}")
+    #         # Print the DATA message's data payload to stdout
+    #         print(f"Received DATA from session {session_id}: {msg.message}")
 
-            self.sessions[session_id].process_packet(msg)
-            # Send an ALIVE message in response to the DATA message
-            alive_message = Message(UAP.CommandEnum.ALIVE, 0, session_id, "ALIVE")
-            encoded_alive_message = alive_message.encode()
-            self.server_socket.sendto(encoded_alive_message, client_address)
-        elif msg.command == UAP.CommandEnum.GOODBYE:
-                #print("\necievd goodbye\n")
-                session_id = msg.session_id
+    #         self.sessions[session_id].process_packet(msg)
+    #         # Send an ALIVE message in response to the DATA message
+    #         alive_message = Message(UAP.CommandEnum.ALIVE, 0, session_id, "ALIVE")
+    #         encoded_alive_message = alive_message.encode()
+    #         self.server_socket.sendto(encoded_alive_message, client_address)
+    #     elif msg.command == UAP.CommandEnum.GOODBYE:
+    #             #print("\necievd goodbye\n")
+    #             session_id = msg.session_id
+    #             if session_id not in self.sessions:
+    #                 # Terminate the session if the DATA message is received without a HELLO
+    #                 return 
+    #             # Send a GOODBYE message to the client
+    #             goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session_id, "GOODBYE")
+    #             encoded_goodbye_message = goodbye_message.encode()
+    #             self.server_socket.sendto(encoded_goodbye_message, client_address)
+        
+    #             # Remove the session from active_sessions
+    #             del self.sessions[session_id]
+    
+    async def session_handler(self, session_id):
+        if session_id not in self.sessions:
+            return
+
+        session = self.sessions[session_id]
+
+        try:
+            while True:
+                # Wait for messages in the session's message queue
+                received_message = await session.messages.get()
+
+                # Process the received message based on its command
+                if received_message.command == UAP.CommandEnum.DATA:
+                    # Handle DATA messages
+                    self.process_data(session_id, received_message)
+                elif received_message.command == UAP.CommandEnum.GOODBYE:
+                    # Handle GOODBYE messages
+                    self.process_goodbye(session_id)
+        except asyncio.CancelledError:
+            pass
+    async def handle_packet(self, data, client_address):
+        try:
+            received_message = Message.decode(data)
+            session_id = received_message.session_id
+
+            if received_message.command == UAP.CommandEnum.HELLO:
                 if session_id not in self.sessions:
-                    # Terminate the session if the DATA message is received without a HELLO
-                    return 
-                # Send a GOODBYE message to the client
-                goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session_id, "GOODBYE")
-                encoded_goodbye_message = goodbye_message.encode()
-                self.server_socket.sendto(encoded_goodbye_message, client_address)
-        
-                # Remove the session from active_sessions
-                del self.sessions[session_id]
-        
+                    new_session = Session(session_id, client_address, self.server_socket, self.sessions)
+                    if not new_session.is_hello(received_message):
+                        # Terminate the session if the initial message is not HELLO
+                        return
+                    self.sessions[session_id] = new_session
+                else:
+                    self.sessions[session_id].close_session()
+                    return
 
-        
+                # Update the session's last activity time
+                self.sessions[session_id].update_activity_time()
+
+                # Starting session task
+                session_task = asyncio.ensure_future(self.session_handler(session_id))
+                self.sessions[session_id].task = session_task
+
+            elif received_message.command in (UAP.CommandEnum.DATA, UAP.CommandEnum.GOODBYE):
+                if session_id in self.sessions:
+                    await self.sessions[session_id].messages.put(received_message)
+        except KeyboardInterrupt:
+            print("handle_packet got keyboard interrupt")
+        except asyncio.exceptions.CancelledError:
+            pass
+
+    # ... (other methods)
+
+
+    
     def terminate_session(self, session_id):
         if session_id in self.sessions:
             session = self.sessions.pop(session_id)
@@ -175,7 +228,7 @@ async def a_input():
             None, sys.stdin.readline
         )
 
-async def input_handler(concurrent_task : asyncio.Task,server):
+async def input_handler(concurrent_task : asyncio.Task):
     try:
         while True:
             # Wait for input and close server if input is q

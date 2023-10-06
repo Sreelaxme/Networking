@@ -6,8 +6,8 @@ import socket
 import threading
 
 
-host = "localhost"
-port = 12345
+# host = "localhost"
+# port = 12345
 sID = random.getrandbits(32)
 seq = 0
 
@@ -48,6 +48,8 @@ def ReceivePacket(client):
 
 if __name__ == "__main__":    
     # Initialize the client
+    host = input("Enter the host (e.g., localhost): ")
+    port = int(input("Enter the port (e.g., 12345): "))
     client =Client(host, port)
     
     helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
