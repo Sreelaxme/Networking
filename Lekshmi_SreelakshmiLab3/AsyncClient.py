@@ -11,7 +11,7 @@ import sys
 host = "localhost"
 port = 2043
 sID = random.getrandbits(32)
-seq = 0
+seq = 1
 
 isRunning = False
 timerStart = 0
@@ -88,7 +88,7 @@ async def InputHandler(client):
     
 
 async def main(server_host, server_port):
-    client_socket = await asyncudp.create_socket(remote_addr=('127.0.0.1', 12345))
+    client_socket = await asyncudp.create_socket(remote_addr=(server_host, int(server_port)))
     # client = Client(server_host, server_port)   
     helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
     client_socket.sendto(helloMessage.encode())
