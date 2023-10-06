@@ -59,41 +59,32 @@ class Session:
         
 
 
-def send_goodbye_to_inactive_sessions(active_sessions, server_socket):
-    inactive_sessions = [session for session in active_sessions.values() if session.is_inactive()]
-    
-    for session in inactive_sessions:
+
+def send_goodbye_to_active_sessions(active_sessions, server_socket):
+    goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, 0, "GOODBYE")  # Create a GOODBYE Message
+    sessions_to_remove= []
+    for session in active_sessions.values():
         goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session.session_id, "GOODBYE")
         encoded_goodbye_message = goodbye_message.encode()
         server_socket.sendto(encoded_goodbye_message, session.client_address)
+        sessions_to_remove.append(session.session_id)
+    
+    for session_id in sessions_to_remove:
         del active_sessions[session.session_id]
-
-
 # def send_goodbye_to_active_sessions(active_sessions, server_socket):
-#     goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, 0, "GOODBYE")  # Create a GOODBYE Message
-#     sessions_to_remove= []
-#     for session in active_sessions.values():
-#         goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session.session_id, "GOODBYE")
-#         encoded_goodbye_message = goodbye_message.encode()
-#         server_socket.sendto(encoded_goodbye_message, session.client_address)
-#         sessions_to_remove.append(session.session_id)
+#     print("Camehere")
+#     goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session.session_id, "GOODBYE")
+#     print("here")
+#     encoded_goodbye_message = goodbye_message.encode()
+#     print("nop")
     
-#     for session_id in sessions_to_remove:
-#         del active_sessions[session.session_id]
-def send_goodbye_to_active_sessions(active_sessions, server_socket):
-    print("Camehere")
-    goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, "SERVER", "Server shutting down")
-    print("here")
-    encoded_goodbye_message = goodbye_message.encode()
-    print("nop")
-    
-    for session_id, session in active_sessions.items():
-        if session.socket is not None:
-            try:
-                server_socket.sendto(encoded_goodbye_message, session.client_address)
-            except AttributeError:
-                # Handle the case where server_socket is None (e.g., during server termination)
-                pass
+#     for session_id, session in active_sessions.items():
+#         if session.socket is not None:
+#             try:
+#                 server_socket.sendto(encoded_goodbye_message, session.client_address)
+#             except AttributeError:
+#                 # Handle the case where server_socket is None (e.g., during server termination)
+#                 pass
 
 
 def main():

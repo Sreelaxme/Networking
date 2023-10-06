@@ -4,7 +4,7 @@ import random
 import time
 import socket
 import threading
-
+import sys
 
 # host = "localhost"
 # port = 12345
@@ -39,6 +39,7 @@ def ReceivePacket(client):
             if msg.command == UAP.CommandEnum.GOODBYE:
                 isRunning = False
                 print("GOODBYE from server")
+                
             if msg.command == UAP.CommandEnum.ALIVE:
                 if currState == STATES["Ready Timer"]:
                     currState = STATES["Ready"]
@@ -48,8 +49,12 @@ def ReceivePacket(client):
 
 if __name__ == "__main__":    
     # Initialize the client
-    host = input("Enter the host (e.g., localhost): ")
-    port = int(input("Enter the port (e.g., 12345): "))
+    if len(sys.argv) != 3:
+        print("Usage: python your_script.py <host> <port>")
+        sys.exit(1)
+
+    host = sys.argv[1]
+    port = int(sys.argv[2])
     client =Client(host, port)
     
     helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
