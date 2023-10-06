@@ -81,9 +81,10 @@ if __name__ == "__main__":
         recieverThread = threading.Thread(target=ReceivePacket, args=(client,))
         recieverThread.daemon = True
         recieverThread.start()
-
         timerStart = time.time()
         while currState in [STATES["Ready"],STATES["Ready Timer"]]:
+            if not isRunning:
+                break
             try:
                 m  = input()
                 message = m.encode('utf-8',errors="ignore")
@@ -104,8 +105,6 @@ if __name__ == "__main__":
                 currState = STATES["Closing"]
                 break
             
-            if not isRunning:
-                break
             
             message = Message(UAP.CommandEnum.DATA,seq,sID,m)
             sendPacket(client,message)

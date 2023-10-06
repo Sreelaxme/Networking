@@ -31,7 +31,7 @@ def thread_handler(session_id):
     server_socket.sendto(message.encode(), clients[session_id]['client_address'])
     print(f"{session_id} [0] Session created")
     while True:
-        if (clients[session_id]['timer']-time.time()) > timeout:
+        if (time.time() - clients[session_id]['timer']) > timeout:
             send_goodbye(session_id)
             print(f"{session_id} Session Closed : Timeout")
             break
