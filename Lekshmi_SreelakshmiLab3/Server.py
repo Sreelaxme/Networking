@@ -16,9 +16,6 @@ class Session:
         self.server_socket = server_socket  # Store the server socket
         self.active_sessions = active_sessions  # Store the active sessions dictionary
 
-    def is_hello(self, message):
-        return message.command == UAP.CommandEnum.HELLO
-
     def update_activity_time(self):
         self.last_activity_time = time.time()
 
@@ -71,20 +68,7 @@ def send_goodbye_to_active_sessions(active_sessions, server_socket):
     
     for session_id in sessions_to_remove:
         del active_sessions[session.session_id]
-# def send_goodbye_to_active_sessions(active_sessions, server_socket):
-#     print("Camehere")
-#     goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session.session_id, "GOODBYE")
-#     print("here")
-#     encoded_goodbye_message = goodbye_message.encode()
-#     print("nop")
-    
-#     for session_id, session in active_sessions.items():
-#         if session.socket is not None:
-#             try:
-#                 server_socket.sendto(encoded_goodbye_message, session.client_address)
-#             except AttributeError:
-#                 # Handle the case where server_socket is None (e.g., during server termination)
-#                 pass
+
 
 
 def main():

@@ -21,14 +21,12 @@ class Session:
         self.client_address = client_address
         self.last_activity_time = time.time()
         self.expected_sequence_number = 1
-        self.server_socket = server_socket  # Store the server socket
-        self.active_sessions = active_sessions  # Store the active sessions dictionary
+        self.server_socket = server_socket  
+        self.active_sessions = active_sessions  
 
         self.messages = asyncio.Queue() # Queue of packets for this session
         self.task = None
 
-    def is_hello(self, message : Message) -> bool:
-        return message.command == UAP.CommandEnum.HELLO and message.sID == self.session_id
 
     def update_activity_time(self):
         self.last_activity_time = time.time()
@@ -46,12 +44,7 @@ class Session:
         await self.send_message(hello_message, self.client_address)
 
     async def send_alive(self, session):
-        alive_message = Message(
-            command=UAP.CommandEnum.ALIVE,
-            sequence_no=0,
-            session_id=session.session_id,
-            message="ALIVE"
-        )
+        alive_message = Message(command=UAP.CommandEnum.ALIVE,sequence_no=0,session_id=session.session_id,message="ALIVE")
         await self.send_message(alive_message, session.client_address)
 
     async def send_message(self, message, addr):
@@ -69,18 +62,14 @@ class Session:
         
  
     def process_packet(self, received_message):
-        # print(received_message)
         # Extract the sequence number from the received message
         received_sequence_number = received_message.sequence_no
 
         if received_sequence_number == self.expected_sequence_number:
-            # Process the packet as expected
-            # print(f"Received packet with sequence number {received_sequence_number}: {received_message.message}")
             PrintMessage(received_message)
             self.expected_sequence_number += 1  # Update the expected sequence number
         elif received_sequence_number < self.expected_sequence_number:
             # Handle out-of-order packet (protocol error)
-            # print(f"Received out-of-order packet with sequence number {received_sequence_number}.")
             PrintMessage(received_message, "Message out of order")
             #self.close_session()
         else:
