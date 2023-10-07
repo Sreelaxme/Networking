@@ -9,10 +9,7 @@ class Server:
         self.server_socket.bind((host, port))
         print(f"Server waiting on {host}:{port}")
 
-    # def DecodePacket(self, data: bytes):
-    #     # Override this method to decode the received data as needed
-    #     return data.decode('utf-8')
-    
+        
     def HandlePacket(self, data, client_addr):
         msg = Message.decode(data)
         session_id = msg.session_id
@@ -51,7 +48,15 @@ class Client:
         self.host = host
         self.port = port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.client_socket.bind(("0.0.0.0",2048))
+        
+        input_port = 2048
+        while True:
+            try:
+                self.client_socket.bind(("0.0.0.0",input_port))
+                break
+            except:
+                input_port += 1
+            
         self.client_socket.connect((host, port))
         print(f"Connected to server at {host}:{port}")
 

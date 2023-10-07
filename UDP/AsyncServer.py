@@ -64,6 +64,8 @@ class Session:
         goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, self.session_id, "GOODBYE")
         encoded_goodbye_message = goodbye_message.encode()
         self.server_socket.sendto(encoded_goodbye_message, self.client_address)
+        del SESSIONS[self.session_id]
+        # self.server_socket.close()
         
  
     def process_packet(self, received_message):
@@ -102,8 +104,7 @@ async def session_handler(server_socket, session_id):
 
     try:
         while True:
-                # print('*')
-
+                
                 # Fetch session data from shared dictionary
                 session = SESSIONS[session_id]
 
@@ -118,8 +119,8 @@ async def session_handler(server_socket, session_id):
                         session_id,
                         "Closing session due to timeout"
                     ))
-
                     session.terminate_session()
+                    return
                 except Exception as e:
                     raise e
                     
