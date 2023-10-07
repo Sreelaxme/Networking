@@ -1,15 +1,29 @@
 import asyncio
 import asyncudp
 from UAP import Message, UAP
-from Server import Session, send_goodbye_to_active_sessions
+from Server import send_goodbye_to_active_sessions
 import sys
 import time
 
 TIMEOUT = 10
 SESSIONS = {}
+
+def send_goodbye_to_active_sessions(active_sessions, server_socket):
+    goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, 0, "GOODBYE")  # Create a GOODBYE Message
+    sessions_to_remove= []
+    for session in active_sessions.values():
+        goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session.session_id, "GOODBYE")
+        encoded_goodbye_message = goodbye_message.encode()
+        server_socket.sendto(encoded_goodbye_message, session.client_address)
+        sessions_to_remove.append(session.session_id)
+    
+    for session_id in sessions_to_remove:
+        del active_sessions[session_id]
+        
 def PrintMessage(msg : Message, 
                  alternativeMessage = None,
                  alternativeSequence = None):
+        # print(f"broooo {alternativeMessage}")
         if alternativeMessage:
             msg.message = alternativeMessage
         if alternativeSequence:
@@ -54,12 +68,15 @@ class Session:
     
     
     def terminate_session(self):
+        if(self.session_id not in self.active_sessions):
+            return
         goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, self.session_id, "GOODBYE")
         encoded_goodbye_message = goodbye_message.encode()
+        # print(self.session_id)
         self.server_socket.sendto(encoded_goodbye_message, self.client_address)
         del SESSIONS[self.session_id]
-        # self.server_socket.close()
-        
+        del self.active_sessions[self.session_id]
+        # self.server_socket.close()      
  
     def process_packet(self, received_message):
         # Extract the sequence number from the received message
@@ -88,7 +105,7 @@ async def session_handler(server_socket, session_id):
     reply_message = Message(UAP.CommandEnum.HELLO, 0, session_id, "Reply HELLO")
     encoded_reply_message = reply_message.encode()
     server_socket.sendto(encoded_reply_message, session.client_address)
-    # print("Replies sent")
+    # print("Replies sent")zzs
     PrintMessage(reply_message, "Session Started")
 
     try:
@@ -131,13 +148,13 @@ async def session_handler(server_socket, session_id):
                     encoded_alive_message = alive_message.encode()
                     server_socket.sendto(encoded_alive_message, client_address)
                 
-                elif received_message.command == UAP.CommandEnum.GOODBYE:
-                    #print("\necievd goodbye\n")
-
-                    PrintMessage(received_message, "Closing session")
-                    session.close_session()
+                elif received_message.command == UAP.CommandEnum.GOODBYE:   
+                    print(f"{hex(received_message.session_id)} Closing session")
+                    session.terminate_session()
                     break
     except asyncio.exceptions.CancelledError:
+        pass
+    except:
         pass
 
 
@@ -169,7 +186,6 @@ async def handle_packet(server_socket):
                 # self.server_socket.sendto(encoded_reply_message, client_address)
                 await new_session.send_hello()
                 new_session.task = asyncio.ensure_future(session_handler(server_socket, session_id))
-                print("Replies sent")
 
             
             elif msg.command == UAP.CommandEnum.DATA:
@@ -189,11 +205,12 @@ async def handle_packet(server_socket):
                 encoded_alive_message = alive_message.encode()
                 server_socket.sendto(encoded_alive_message, client_address)
             elif msg.command == UAP.CommandEnum.GOODBYE:
-                    #print("\necievd goodbye\n")
+                    # print("\necievd goodbye\n")
                     session_id = msg.session_id
                     if session_id not in SESSIONS:
                         return 
                     # Send a GOODBYE message to the client
+                    await SESSIONS[session_id].messages.put(msg)
                     goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session_id, "GOODBYE")
                     encoded_goodbye_message = goodbye_message.encode()
                     server_socket.sendto(encoded_goodbye_message, client_address)
@@ -231,12 +248,13 @@ async def main(port, host='0.0.0.0'):
 
     # Await on all parallel tasks
     _, pending = await asyncio.wait([input_task, recieve_task], return_when=asyncio.FIRST_COMPLETED)
-
+    # print("weeee")
     # Cancel whichever tasks have not ended yet
     for task in pending:
         task.cancel()
 
     # Send GOODBYE message to all active sessions
+    # print(SESSIONS)
     send_goodbye_to_active_sessions(SESSIONS.copy(),server_socket)
     # Close the socket and clean up
     server_socket.close()

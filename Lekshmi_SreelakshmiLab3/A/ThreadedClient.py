@@ -117,11 +117,10 @@ if __name__ == "__main__":
                 isRunning = False
 
     except Exception as e:
-        print(e)
+        pass
     finally:
+        # print("heyy")
         isRunning = False
         client.Exit()
-    
-
     # Close the client
     client.Exit()
