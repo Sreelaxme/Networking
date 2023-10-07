@@ -1,7 +1,6 @@
 import asyncio
 import asyncudp
 from UAP import Message, UAP
-from Server import send_goodbye_to_active_sessions
 import sys
 import time
 

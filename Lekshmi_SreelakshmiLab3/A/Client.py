@@ -1,10 +1,41 @@
 from UAP import Message,UAP
-from Network import Client
 import random
 import time
 import socket
 import threading
 import sys
+
+
+class Client:
+    def __init__(self, host, port, timeout=5):
+        self.host = host
+        self.port = port
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        
+        input_port = 2048
+        while True:
+            try:
+                self.client_socket.bind(("0.0.0.0",input_port))
+                break
+            except:
+                input_port += 1
+            
+        self.client_socket.connect((host, port))
+        print(f"Connected to server at {host}:{port}")
+
+        self.timeout = timeout
+
+    def SendPacket(self, message):
+        self.client_socket.sendall(message)
+
+    def HandlePacket(self, message: str, isEOF: bool = False):
+        self.SendPacket(message)
+        
+
+    def Exit(self):
+        self.client_socket.close()
+
+
 
 # host = "localhost"
 # port = 12345
@@ -46,6 +77,8 @@ def ReceivePacket(client):
                     timerStart = time.time()
         except socket.timeout:
             pass
+        except:
+            pass
 
 if __name__ == "__main__":    
     # Initialize the client
@@ -60,7 +93,7 @@ if __name__ == "__main__":
     helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
     sendPacket(client,helloMessage)
     client.client_socket.settimeout(timeout)
-
+    curr_time = time.time()
     # Wait for hello
     try:
         
@@ -76,6 +109,10 @@ if __name__ == "__main__":
                     break
             except TimeoutError:
                 currState = STATES["Closing"]
+                break
+            except Exception as e:
+                currState = STATES["Closing"]
+                break
 
         isRunning = True
         recieverThread = threading.Thread(target=ReceivePacket, args=(client,))
