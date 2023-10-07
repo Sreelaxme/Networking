@@ -80,7 +80,7 @@ def ReceivePacket():
                 clients[msg.session_id]['timer'] = time.time()
 
     except Exception as e:
-        print(e)
+        pass
     
 
 
@@ -103,8 +103,7 @@ if __name__ == "__main__":
         quit()
     except Exception as e:
         print(e)
-    # finally:
+    finally:
     # Send GOODBYE message to all active sessions
-    finish_all_clients()
-    print(server_socket)
-    server_socket.close()
+        finish_all_clients()
+        server_socket.close()

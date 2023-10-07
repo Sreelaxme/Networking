@@ -1,5 +1,4 @@
 from UAP import Message,UAP
-from Network import Client
 import random
 import time
 import socket
@@ -25,7 +24,7 @@ STATES = {
         "": 4,
     }
 currState = STATES["Hello wait"]
-def sendPacket(client : Client,message : Message):
+def sendPacket(client,message : Message):
     global seq
     client.sendto(message.encode())
     # print("sent")
