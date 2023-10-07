@@ -63,6 +63,7 @@ def ReceivePacket():
     try:
         while True:
             data, client_address = server_socket.recvfrom(1024)
+            # print(client_address)
             if not data:
                 continue
             msg = UAP.Message.decode(data)
