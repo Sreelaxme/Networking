@@ -82,82 +82,85 @@ def ReceivePacket(client):
 
 if __name__ == "__main__":    
     # Initialize the client
-    if len(sys.argv) != 3:
-        print("Usage: python your_script.py <host> <port>")
-        sys.exit(1)
-
-    host = sys.argv[1]
-    port = int(sys.argv[2])
-    client =Client(host, port)
-    
-    helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
-    sendPacket(client,helloMessage)
-    client.client_socket.settimeout(timeout)
-    curr_time = time.time()
-    # Wait for hello
     try:
+        if len(sys.argv) != 3:
+            print("Usage: python your_script.py <host> <port>")
+            sys.exit(1)
+
+        host = sys.argv[1]
+        port = int(sys.argv[2])
+        client =Client(host, port)
         
-        while True:
-            try:
-                data, _ = client.client_socket.recvfrom(1024)
+        helloMessage = Message(UAP.CommandEnum.HELLO, seq, sID, "Hii")
+        sendPacket(client,helloMessage)
+        client.client_socket.settimeout(timeout)
+        curr_time = time.time()
+        # Wait for hello
+        try:
+            
+            while True:
+                try:
+                    data, _ = client.client_socket.recvfrom(1024)
 
-                if not data:
-                    continue
-                msg = Message.decode(data)
-                if msg.session_id == sID and msg.command == UAP.CommandEnum.HELLO:
-                    currState = STATES["Ready"]
-                    break
-            except TimeoutError:
-                currState = STATES["Closing"]
-                break
-            except Exception as e:
-                currState = STATES["Closing"]
-                break
-
-        isRunning = True
-        recieverThread = threading.Thread(target=ReceivePacket, args=(client,))
-        recieverThread.daemon = True
-        recieverThread.start()
-        timerStart = time.time()
-        while currState in [STATES["Ready"],STATES["Ready Timer"]]:
-            if not isRunning:
-                break
-            try:
-                m  = input()
-                message = m.encode('utf-8',errors="ignore")
-                m = message.decode('utf-8')  
-                if(m == None or len(m)==0):
-                    continue
-                if(m == "eof"):   
+                    if not data:
+                        continue
+                    msg = Message.decode(data)
+                    if msg.session_id == sID and msg.command == UAP.CommandEnum.HELLO:
+                        currState = STATES["Ready"]
+                        break
+                except TimeoutError:
                     currState = STATES["Closing"]
-                    break 
-            except EOFError:
-                currState = STATES["Closing"]
-                break
-            except KeyboardInterrupt : 
-                currState = STATES["Closing"]
-                break
+                    break
+                except:
+                    currState = STATES["Closing"]
+                    break
 
-            if time.time() - timerStart > timeout and currState is STATES["Ready Timer"]:
-                currState = STATES["Closing"]
-                break
-            
-            
-            message = Message(UAP.CommandEnum.DATA,seq,sID,m)
-            sendPacket(client,message)
-            currState = STATES["Ready Timer"]
+            isRunning = True
+            recieverThread = threading.Thread(target=ReceivePacket, args=(client,))
+            recieverThread.daemon = True
+            recieverThread.start()
+            timerStart = time.time()
+            while currState in [STATES["Ready"],STATES["Ready Timer"]]:
+                if not isRunning:
+                    break
+                try:
+                    m  = input()
+                    message = m.encode('utf-8',errors="ignore")
+                    m = message.decode('utf-8')  
+                    if(m == None or len(m)==0):
+                        continue
+                    if(m == "eof"):   
+                        currState = STATES["Closing"]
+                        break 
+                except EOFError:
+                    currState = STATES["Closing"]
+                    break
+                except KeyboardInterrupt : 
+                    currState = STATES["Closing"]
+                    break
 
-        if currState == STATES["Closing"]:
-            sendPacket(client, Message(UAP.CommandEnum.GOODBYE, seq, sID, "POi"))
-        while isRunning:
-            if time.time() - timerStart >timeout:
-                isRunning = False
+                if time.time() - timerStart > timeout and currState is STATES["Ready Timer"]:
+                    currState = STATES["Closing"]
+                    break
+                
+                
+                message = Message(UAP.CommandEnum.DATA,seq,sID,m)
+                sendPacket(client,message)
+                currState = STATES["Ready Timer"]
 
-    except Exception as e:
-        pass
-    finally:
-        # print("heyy")
-        isRunning = False
+            if currState == STATES["Closing"]:
+                sendPacket(client, Message(UAP.CommandEnum.GOODBYE, seq, sID, "POi"))
+            while isRunning:
+                if time.time() - timerStart >timeout:
+                    isRunning = False
+
+        except Exception as e:
+            pass
+        finally:
+            # print("heyy")
+            isRunning = False
+            client.Exit()
+        # Close the client
         client.Exit()
-    # Close the client
-    client.Exit()
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received")

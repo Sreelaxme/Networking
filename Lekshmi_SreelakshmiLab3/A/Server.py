@@ -3,7 +3,7 @@ import asyncudp
 from UAP import Message, UAP
 import sys
 import time
-
+import platform
 TIMEOUT = 10
 SESSIONS = {}
 
@@ -263,9 +263,16 @@ async def main(port, host='0.0.0.0'):
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) == 1:
-        print("Usage: AsyncUAPServer.py port [host]")
-    elif len(sys.argv) == 2:
-        asyncio.run(main(int(sys.argv[1])))
-    else:
-        asyncio.run(main(int(sys.argv[1]), sys.argv[2]))
+    
+    if platform.system()=='Windows':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    try:
+        if len(sys.argv) == 1:
+            print("Usage: AsyncUAPServer.py port [host]")
+        elif len(sys.argv) == 2:
+            asyncio.run(main(int(sys.argv[1])))
+        else:
+            asyncio.run(main(int(sys.argv[1]), sys.argv[2]))
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received")
+        

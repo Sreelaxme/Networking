@@ -6,7 +6,7 @@ import asyncio
 import asyncudp
 import aioconsole
 import sys
-
+import platform
 host = "localhost"
 port = 2043
 sID = random.getrandbits(32)
@@ -113,6 +113,8 @@ async def main(server_host, server_port):
             except asyncio.exceptions.TimeoutError:
                 print(f"No server at {server_host} {server_port}")
                 quit()
+            except KeyboardInterrupt:
+                quit()
 
         isRunning = True
         receive_task = asyncio.ensure_future(ReceivePacket(client_socket))
@@ -126,8 +128,15 @@ async def main(server_host, server_port):
 
 
 
-if __name__ == "__main__":    
-    if(len(sys.argv) == 3):
-        asyncio.run(main(sys.argv[1],int(sys.argv[2])))
-    else:
-        print("Usage: python your_script.py <host> <port>")
+if __name__ == "__main__": 
+    if platform.system()=='Windows':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) 
+    try:  
+        if(len(sys.argv) == 3):
+            asyncio.run(main(sys.argv[1],int(sys.argv[2])))
+        else:
+            print("Usage: python your_script.py <host> <port>")
+    except KeyboardInterrupt:
+        print("KeyBoard Interrupt received")
+    except asyncio.CancelledError:
+        pass
