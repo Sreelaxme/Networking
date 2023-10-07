@@ -217,6 +217,7 @@ async def handle_packet(server_socket):
                     # Remove the session from active_sessions
                     del SESSIONS[session_id]
     except KeyboardInterrupt:
+        send_goodbye_to_active_sessions(SESSIONS.copy(),server_socket)
         print("recieve handler got keyboard interrupt")
     except asyncio.exceptions.CancelledError:
         pass
@@ -242,23 +243,27 @@ async def main(port, host='0.0.0.0'):
 
 
     # Define each task
-    recieve_task = asyncio.ensure_future(handle_packet(server_socket))
-    input_task = asyncio.ensure_future(handle_keyboard_input(server_socket))
+    try:
+        recieve_task = asyncio.ensure_future(handle_packet(server_socket))
+        input_task = asyncio.ensure_future(handle_keyboard_input(server_socket))
 
-    # Await on all parallel tasks
-    _, pending = await asyncio.wait([input_task, recieve_task], return_when=asyncio.FIRST_COMPLETED)
-    # print("weeee")
-    # Cancel whichever tasks have not ended yet
-    for task in pending:
-        task.cancel()
+        # Await on all parallel tasks
+        _, pending = await asyncio.wait([input_task, recieve_task], return_when=asyncio.FIRST_COMPLETED)
+        # print("weeee")
+        # Cancel whichever tasks have not ended yet
+        for task in pending:
+            task.cancel()
 
-    # Send GOODBYE message to all active sessions
-    # print(SESSIONS)
-    send_goodbye_to_active_sessions(SESSIONS.copy(),server_socket)
-    # Close the socket and clean up
-    server_socket.close()
-    return
         
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received")
+    finally:
+        # Send GOODBYE message to all active sessions
+        # print(SESSIONS)
+        send_goodbye_to_active_sessions(SESSIONS.copy(),server_socket)
+        # Close the socket and clean up
+        server_socket.close()
+        return
 
 
 if __name__ == "__main__":
@@ -273,6 +278,6 @@ if __name__ == "__main__":
             asyncio.run(main(int(sys.argv[1])))
         else:
             asyncio.run(main(int(sys.argv[1]), sys.argv[2]))
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt received")
+    except:
+        pass
         
