@@ -26,7 +26,7 @@ def PrintMessage(msg : Message,
         if alternativeMessage:
             msg.message = alternativeMessage
         if alternativeSequence:
-            msg.seq = alternativeSequence
+            msg.sequence_no = alternativeSequence
         print(f"{hex(msg.session_id)} [{msg.sequence_no}] {msg.message}")
 class Session:
     def __init__(self, session_id, client_address, server_socket, active_sessions):
@@ -68,14 +68,17 @@ class Session:
     
     def terminate_session(self):
         if(self.session_id not in self.active_sessions):
+            # print("terminate return")
             return
+        # print("here??????")
         goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, self.session_id, "GOODBYE")
         encoded_goodbye_message = goodbye_message.encode()
         # print(self.session_id)
         self.server_socket.sendto(encoded_goodbye_message, self.client_address)
+        print("good bye sent")
+        print(f"{hex(self.session_id)} Closing session")
+
         del SESSIONS[self.session_id]
-        del self.active_sessions[self.session_id]
-        # self.server_socket.close()      
  
     def process_packet(self, received_message):
         # Extract the sequence number from the received message
@@ -90,6 +93,7 @@ class Session:
             #self.close_session()
         else:
             # Handle missing packets
+            # print("---------------------------", self.expected_sequence_number, received_sequence_number, "---------------------------------------")
             for missing_sequence_number in range(self.expected_sequence_number, received_sequence_number):
                 # print(f"Lost packet with sequence number {missing_sequence_number}")
                 PrintMessage(received_message, 
@@ -111,6 +115,8 @@ async def session_handler(server_socket, session_id):
         while True:
                 
                 # Fetch session data from shared dictionary
+                if session_id not in SESSIONS:
+                    break
                 session = SESSIONS[session_id]
 
                 client_address = session.client_address
@@ -124,8 +130,10 @@ async def session_handler(server_socket, session_id):
                         session_id,
                         "Closing session due to timeout"
                     ))
+                    print("timeout terminate")
                     session.terminate_session()
-                    return
+                    # print("session_handler break")
+                    break
                 except Exception as e:
                     raise e
                     
@@ -148,13 +156,13 @@ async def session_handler(server_socket, session_id):
                     server_socket.sendto(encoded_alive_message, client_address)
                 
                 elif received_message.command == UAP.CommandEnum.GOODBYE:   
-                    print(f"{hex(received_message.session_id)} Closing session")
+                    print("goodbye terminate")
                     session.terminate_session()
                     break
     except asyncio.exceptions.CancelledError:
         pass
-    except:
-        pass
+    # except:
+    #     pass
 
 
 
@@ -174,7 +182,7 @@ async def handle_packet(server_socket):
                     # remove from the dictionary 
                     print(SESSIONS)
                     del SESSIONS[session_id]
-                    return
+                    continue
 
                 # Update the session's last activity time
                 SESSIONS[session_id].update_activity_time()
@@ -185,13 +193,13 @@ async def handle_packet(server_socket):
                 # self.server_socket.sendto(encoded_reply_message, client_address)
                 await new_session.send_hello()
                 new_session.task = asyncio.ensure_future(session_handler(server_socket, session_id))
-
+                print("hello ethi")
             
             elif msg.command == UAP.CommandEnum.DATA:
                 session_id = msg.session_id
                 if session_id not in SESSIONS:
                     # Terminate the session if the DATA message is received without a HELLO
-                    return
+                    continue
 
                 # Update the session's last activity time
                 SESSIONS[session_id].update_activity_time()
@@ -203,19 +211,21 @@ async def handle_packet(server_socket):
                 alive_message = Message(UAP.CommandEnum.ALIVE, 0, session_id, "ALIVE")
                 encoded_alive_message = alive_message.encode()
                 server_socket.sendto(encoded_alive_message, client_address)
+                # print("Data kazhinj")
             elif msg.command == UAP.CommandEnum.GOODBYE:
                     # print("\necievd goodbye\n")
                     session_id = msg.session_id
                     if session_id not in SESSIONS:
-                        return 
+                        continue
                     # Send a GOODBYE message to the client
                     await SESSIONS[session_id].messages.put(msg)
-                    goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session_id, "GOODBYE")
-                    encoded_goodbye_message = goodbye_message.encode()
-                    server_socket.sendto(encoded_goodbye_message, client_address)
+                    # SESSIONS[session_id].terminate_session()
+                    # goodbye_message = Message(UAP.CommandEnum.GOODBYE, 0, session_id, "GOODBYE")
+                    # encoded_goodbye_message = goodbye_message.encode()
+                    # server_socket.sendto(encoded_goodbye_message, client_address)
             
-                    # Remove the session from active_sessions
-                    del SESSIONS[session_id]
+                    # # Remove the session from active_sessions
+                    # del SESSIONS[session_id]
     except KeyboardInterrupt:
         send_goodbye_to_active_sessions(SESSIONS.copy(),server_socket)
         print("recieve handler got keyboard interrupt")
@@ -249,6 +259,7 @@ async def main(port, host='0.0.0.0'):
 
         # Await on all parallel tasks
         _, pending = await asyncio.wait([input_task, recieve_task], return_when=asyncio.FIRST_COMPLETED)
+        # print(pending)
         # print("weeee")
         # Cancel whichever tasks have not ended yet
         for task in pending:

@@ -45,7 +45,7 @@ seq = 0
 isRunning = False
 timerStart = 0
 
-timeout = 10
+timeout = 30
 STATES = {
         "Hello wait": 0,
         "Ready": 1,
@@ -65,6 +65,7 @@ def ReceivePacket(client):
         try:
             data, _ = client.client_socket.recvfrom(1024)
             msg = Message.decode(data)
+            print(msg)
             if msg.command == UAP.CommandEnum.HELLO:
                 print("Received Hello from server")
             if msg.command == UAP.CommandEnum.GOODBYE:
@@ -149,7 +150,8 @@ if __name__ == "__main__":
                 currState = STATES["Ready Timer"]
 
             if currState == STATES["Closing"]:
-                sendPacket(client, Message(UAP.CommandEnum.GOODBYE, seq, sID, "POi"))
+                sendPacket(client, Message(UAP.CommandEnum.GOODBYE, seq, sID, "GOODBYE"))
+                print("Closing")
             while isRunning:
                 if time.time() - timerStart >timeout:
                     isRunning = False
