@@ -75,7 +75,7 @@ class Session:
         encoded_goodbye_message = goodbye_message.encode()
         # print(self.session_id)
         self.server_socket.sendto(encoded_goodbye_message, self.client_address)
-        print("good bye sent")
+        # print("good bye sent")
         print(f"{hex(self.session_id)} Closing session")
 
         del SESSIONS[self.session_id]
@@ -213,7 +213,7 @@ async def handle_packet(server_socket):
                 server_socket.sendto(encoded_alive_message, client_address)
                 # print("Data kazhinj")
             elif msg.command == UAP.CommandEnum.GOODBYE:
-                    # print("\necievd goodbye\n")
+                    print("\nrecievd goodbye\n")
                     session_id = msg.session_id
                     if session_id not in SESSIONS:
                         continue

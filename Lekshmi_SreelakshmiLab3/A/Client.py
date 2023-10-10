@@ -45,7 +45,7 @@ seq = 0
 isRunning = False
 timerStart = 0
 
-timeout = 30
+timeout = 10
 STATES = {
         "Hello wait": 0,
         "Ready": 1,
@@ -65,7 +65,7 @@ def ReceivePacket(client):
         try:
             data, _ = client.client_socket.recvfrom(1024)
             msg = Message.decode(data)
-            print(msg)
+            # print(msg)
             if msg.command == UAP.CommandEnum.HELLO:
                 print("Received Hello from server")
             if msg.command == UAP.CommandEnum.GOODBYE:
